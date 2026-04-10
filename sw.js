@@ -1,26 +1,22 @@
+// Слушаем реальные пуши от сервера
 self.addEventListener('push', (event) => {
-  const data = event.data ? event.data.text() : 'Данных нет';
-  
-  const options = {
-    body: data,
-    icon: 'https://via.placeholder.com/192',
-    badge: 'https://via.placeholder.com/192',
-    vibrate: [100, 50, 100],
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: 1
+    const data = event.data ? event.data.text() : 'Привет! Это реальный пуш.';
+    showNotification(data);
+});
+
+// Слушаем сообщения от кнопки с сайта (для теста без бэкенда)
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.action === 'test-push') {
+        showNotification('Ура! Кнопка работает, уведомления приходят!');
     }
-  };
-
-  event.waitUntil(
-    self.registration.showNotification('Тестовое уведомление', options)
-  );
 });
 
-// Логика клика по уведомлению
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  event.waitUntil(
-    clients.openWindow('/')
-  );
-});
+function showNotification(title) {
+    const options = {
+        body: 'Проверка прошла успешно. PWA на Render работает!',
+        icon: 'https://via.placeholder.com/128',
+        badge: 'https://via.placeholder.com/128',
+        vibrate: [200, 100, 200]
+    };
+    self.registration.showNotification(title, options);
+}
