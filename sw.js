@@ -1,22 +1,34 @@
-// Слушаем реальные пуши от сервера
+// Слушаем реальные пуши от сервера (в будущем)
 self.addEventListener('push', (event) => {
-    const data = event.data ? event.data.text() : 'Привет! Это реальный пуш.';
-    showNotification(data);
+    const data = event.data ? event.data.text() : 'Привет! Это Push-уведомление.';
+    event.waitUntil(
+        showNotification(data)
+    );
 });
 
-// Слушаем сообщения от кнопки с сайта (для теста без бэкенда)
+// Слушаем команду от кнопки с сайта
 self.addEventListener('message', (event) => {
     if (event.data && event.data.action === 'test-push') {
-        showNotification('Ура! Кнопка работает, уведомления приходят!');
+        showNotification('Работает! Прошло 3 секунды.');
     }
 });
 
+// Общая функция показа уведомления
 function showNotification(title) {
     const options = {
-        body: 'Проверка прошла успешно. PWA на Render работает!',
-        icon: 'https://via.placeholder.com/128',
-        badge: 'https://via.placeholder.com/128',
-        vibrate: [200, 100, 200]
+        body: 'Твоя PWA успешно отправляет уведомления через Service Worker!',
+        icon: 'https://via.placeholder.com/192',
+        badge: 'https://via.placeholder.com/192',
+        vibrate: [200, 100, 200],
+        data: { url: self.location.origin }
     };
-    self.registration.showNotification(title, options);
+    return self.registration.showNotification(title, options);
 }
+
+// Клик по уведомлению
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    event.waitUntil(
+        clients.openWindow('/')
+    );
+});
