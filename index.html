@@ -6,57 +6,126 @@
     <title>Push PWA Test</title>
     <link rel="manifest" href="manifest.json">
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 15px; background: #f0f2f5; }
-        button { padding: 15px 25px; font-size: 16px; font-weight: bold; cursor: pointer; border: none; border-radius: 8px; transition: 0.3s; width: 280px; }
+        body { 
+            font-family: -apple-system, system-ui, sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            gap: 15px; 
+            background: #f4f7f9; 
+            margin: 0;
+        }
+        h2 { color: #333; }
+        button { 
+            padding: 15px 25px; 
+            font-size: 16px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            border: none; 
+            border-radius: 12px; 
+            transition: all 0.2s; 
+            width: 280px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
         #subscribeBtn { background: #007bff; color: white; }
-        #testPushBtn { background: #28a745; color: white; display: none; } /* Появится после подписки */
-        button:active { transform: scale(0.98); }
-        code { background: #fff; padding: 15px; border: 1px solid #ddd; border-radius: 5px; width: 90%; max-width: 500px; word-break: break-all; font-size: 12px; height: 100px; overflow-y: auto; }
+        #testPushBtn { background: #28a745; color: white; display: none; }
+        button:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+        button:active { transform: scale(0.96); }
+        p { color: #666; font-size: 14px; margin-bottom: 0; }
+        code { 
+            background: #fff; 
+            padding: 15px; 
+            border: 1px solid #ddd; 
+            border-radius: 8px; 
+            width: 90%; 
+            max-width: 500px; 
+            word-break: break-all; 
+            font-size: 11px; 
+            height: 80px; 
+            overflow-y: auto;
+            color: #444;
+        }
     </style>
 </head>
 <body>
 
-    <h2>Тест Пуш-уведомлений</h2>
+    <h2>PWA Push Test</h2>
     
-    <button id="subscribeBtn">1. Разрешить и Подписаться</button>
-    <button id="testPushBtn">2. Отправить тестовый пуш</button>
+    <button id="subscribeBtn">1. Разрешить уведомления</button>
+    <button id="testPushBtn">2. Тест через 3 секунды</button>
 
-    <p>Данные подписки:</p>
-    <code id="subscriptionJson">Нажми кнопку 1...</code>
+    <p>JSON подписки (для сервера):</p>
+    <code id="subscriptionJson">Нажми синюю кнопку...</code>
 
     <script>
-        // ВСТАВЬ СЮДА СВОЙ КЛЮЧ (возьми любой из генератора)
+        // ВСТАВЬ СВОЙ КЛЮЧ СЮДА (из любого генератора VAPID)
         const PUBLIC_VAPID_KEY = 'BAwpz88OdQlV1CJI-vzGlKSf47Vkqd-PW0nO10V19erx_BpOI2OYw8_gb5cqSt2YIjK-W9PtZGZdg5DPYXAe058'; 
 
-        // Регистрация SW
+        // 1. Регистрация Service Worker
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').then(() => console.log("SW OK"));
+            navigator.serviceWorker.register('sw.js')
+                .then(() => console.log("Service Worker зарегистрирован"))
+                .catch(err => console.log("Ошибка регистрации SW:", err));
         }
 
-        // Кнопка 1: Подписка
+        // 2. Логика подписки
         document.getElementById('subscribeBtn').addEventListener('click', async () => {
-            const result = await Notification.requestPermission();
-            if (result === 'granted') {
-                const reg = await navigator.serviceWorker.ready;
-                const sub = await reg.pushManager.subscribe({
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    alert('Вы запретили уведомления. Сбросьте настройки в браузере (иконка замка).');
+                    return;
+                }
+
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
                 });
-                document.getElementById('subscriptionJson').innerText = JSON.stringify(sub);
+
+                document.getElementById('subscriptionJson').innerText = JSON.stringify(subscription);
                 document.getElementById('testPushBtn').style.display = 'block';
-                alert('Подписка оформлена!');
-            } else {
-                alert('Нужно разрешить уведомления в браузере!');
+                document.getElementById('subscribeBtn').innerText = '✅ Подписан';
+                alert('Готово! Теперь нажми зеленую кнопку и сверни браузер.');
+            } catch (error) {
+                console.error('Ошибка подписки:', error);
+                alert('Ошибка: ' + error.message);
             }
         });
 
-        // Кнопка 2: Тест (имитация пуша через SW)
-        document.getElementById('testPushBtn').addEventListener('click', async () => {
-            const reg = await navigator.serviceWorker.ready;
-            // Мы посылаем сообщение в SW, чтобы он показал уведомление
-            reg.active.postMessage({ action: 'test-push' });
+        // 3. Логика таймера
+        document.getElementById('testPushBtn').addEventListener('click', () => {
+            const btn = document.getElementById('testPushBtn');
+            btn.disabled = true;
+            
+            let seconds = 3;
+            btn.innerText = `Ждем ${seconds} сек...`;
+
+            const timer = setInterval(async () => {
+                seconds--;
+                if (seconds > 0) {
+                    btn.innerText = `Ждем ${seconds} сек...`;
+                } else {
+                    clearInterval(timer);
+                    btn.innerText = "Отправка...";
+                    
+                    // Сигнал в Service Worker
+                    const reg = await navigator.serviceWorker.ready;
+                    if (reg.active) {
+                        reg.active.postMessage({ action: 'test-push' });
+                    }
+                    
+                    setTimeout(() => {
+                        btn.innerText = "2. Тест через 3 секунды";
+                        btn.disabled = false;
+                    }, 1000);
+                }
+            }, 1000);
         });
 
+        // Утилита для ключа
         function urlBase64ToUint8Array(base64String) {
             const padding = '='.repeat((4 - base64String.length % 4) % 4);
             const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
